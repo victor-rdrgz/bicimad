@@ -66,15 +66,15 @@ class BiciMad():
                 usecols= COLUMNS_TO_PRESERVE)
             return df
         except FileNotFoundError:
-          print(f"Error: El archivo {csv} no se encuentra.")
+          raise FileNotFoundError(f"Error: El archivo {csv} no se encuentra.")
         except pd.errors.ParserError:
-            print(f"Error: No se pudo analizar el archivo CSV. Asegúrate de que"
+          raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo CSV. Asegúrate de que"
                     "esté bien formado.")
         except ValueError as e:
-            print(f"Error: {e}. Asegúrate de que las columnas especificadas "
-                   "existan en el archivo CSV.")
+          raise ValueError(f"Error: {e}. Asegúrate de que las columnas especificadas "
+                  "existan en el archivo CSV.")
         except Exception as e:
-            print(f"Se ha producido un error inesperado: {e}")
+          raise Exception(f"Se ha producido un error inesperado: {e}")
 
     @property
     def data(self):
@@ -185,11 +185,12 @@ class BiciMad():
       plt.show()
 
 
-    def weekday_time(self: "Bicimad") -> pd.Series:
+    def weekday_time(self) -> pd.Series:
       '''C4: Calculates how many hours have all the bikes been rented
       divided per day of the week'''
       hoursOfRental = self.day_time().to_frame()
       hoursOfRental.rename(columns={'trip_minutes': 'trip_hours'}, inplace=True)
+      hoursOfRental['trip_hours'] = hoursOfRental['trip_hours']/60
       hoursOfRental['week_day'] = hoursOfRental.index.day_name()
       hoursOfRental = (
           hoursOfRental.groupby('week_day')['trip_hours'].sum().astype(int))
@@ -200,12 +201,12 @@ class BiciMad():
       return hoursOfRental
 
 
-    def total_usage_day(self: "Bicimad") -> pd.Series:
+    def total_usage_day(self) -> pd.Series:
       '''C5: Calculate the total number of uses per day'''
       return self.data.groupby(self.data.index.date).size()
 
 
-    def usage_per_day_per_station(self: "Bicimad") -> pd.DataFrame:
+    def usage_per_day_per_station(self) -> pd.DataFrame:
       '''C6: Calculate the total number of uses per day and unlock station'''
       return self.data.groupby([pd.Grouper(freq='1D'), 'station_unlock']).size()
 
@@ -228,5 +229,16 @@ class BiciMad():
 
 
     def __str__(self):
-      print(f"Mes: {self.__month}, Año: {self.__year}")
-      print(self.data)
+        header = f"Reporte de Datos para {self.__month}/{self.__year}"
+        
+        data_description = (
+            f"El DataFrame contiene {len(self)} registros con las siguientes columnas: "
+            f"{', '.join(self.data.columns)}."
+        )
+        
+        # Información adicional, como los primeros y últimos registros para dar una vista previa
+        preview = "Vista previa de los primeros y últimos registros:\n"
+        preview += str(self.data.head(3)) + "\n...\n" + str(self.data.tail(3))
+        
+        # Juntamos todo en un solo string para el output
+        return f"{header}\n{data_description}\n{preview}"
