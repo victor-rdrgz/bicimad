@@ -27,8 +27,8 @@ from bicimad import UrlEMT, BiciMad
 
 # Configurar la conexión y descargar datos
 url_manager = UrlEMT()
-data = url_manager.get_csv(2023, 2)
+data = url_manager.get_csv(23, 2)
 
 # Cargar y analizar los datos
-bicimad = BiciMad(2, 2023)
+bicimad = BiciMad(2, 23)
 print(bicimad.resume())
