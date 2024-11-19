@@ -8,15 +8,25 @@ import requests
 
 def get_links(html: str) -> list:
     '''
-    Toma como parámetro un texto HTML y devuelve un conjunto con
-    todos los enlaces que coincidan con el patrón definido.
+    Extracts and returns a list of links from the provided HTML text 
+    that match a specific pattern.
+
+    Parameters:
+    - html (str): The HTML content as a string from which links 
+      will be extracted.
+    Returns:
+    - list: A list of unique links matching the pattern found in 
+      the HTML content.
+    Exceptions:
+    - TypeError: Raised if the provided argument is not a string.
     '''
-    # Verificar que el argumento html sea de tipo str
     if not isinstance(html, str):
         raise TypeError(
-            "El argumento 'html' debe ser una cadena de texto.")
-    # Encontrar todas las coincidencias del patrón en el HTML
-    pattern = r'href="(/getattachment/[a-zA-Z0-9-]*/trips_\d{2}_\d{2}_[^"]*-csv\.aspx)"'
+            "html argument must be a text string.")
+    # Find all matches of the pattern in the HTML.
+    pattern = (
+    r'href="(/getattachment/[a-zA-Z0-9-]*/trips_\d{2}_\d{2}_[^"]*-csv\.aspx)"')
+    
     return list(set(re.findall(pattern, html)))
 
 
@@ -26,29 +36,34 @@ class UrlEMT():
     
     
     def __init__(self):
-      '''Buils the object with the links from Bicimad URL'''
+      '''Buidls the object with the links from Bicimad URL'''
       self.__enlaces = UrlEMT.select_valid_urls()
 
 
     @staticmethod
-    def select_valid_urls():
+    def select_valid_urls() -> list:
         '''
-        método estático que se encarga de actualizar el atributo de
-        los objetos de la clase. Devuelve un conjunto de enlaces válidos.
-        Si la petición al servidor de la EMT devuelve un código de
-        retorno distinto de 200, la función lanza una excepción de
-        tipo ConnectionError.
+        Retrieves and returns a list of valid URLs from the EMT server.
+
+        This static method performs an HTTP request to the EMT server to obtain 
+        valid URLs and checks their status. If the response status code from the 
+        server is not 200, or if there is a connection issue, an exception is 
+        raised.
+        Returns:
+        - list: A list of valid URLs with their corresponding indices.
+        Exceptions:
+        - ConnectionError: Raised if the connection to the server fails or if 
+        the server returns a non-200 status code.
+        - TimeoutError: If the request to validate the URLs takes too long.
         '''
         try:
-            # Realizar la solicitud HTTP y verificar el código de estado
+            # Make the HTTP request and check the status code
             r = urllib.request.urlopen(UrlEMT.EMT + UrlEMT.GENERAL)
             if r.getcode() != 200:
-                raise ConnectionError(
-                    f"Error al intentar conectar con el servidor. "
-                    f"Status code: {r.getcode()}")
-            # Obtener los enlaces válidos del HTML
+                raise ConnectionError(f"Status code: {r.getcode()}")
+            # Getting valid links from HTML
             links = get_links(r.read().decode("utf-8"))
-            # Analizamos todos los enlaces extraidos
+            # Check that the URLs obtained are valid
             indexed_links = {}
             for link in links:
                 r = requests.head(
@@ -61,89 +76,109 @@ class UrlEMT():
 
         except urllib.error.URLError as e:
             raise ConnectionError(
-                f"Error al intentar conectar con el servidor: {e}")
+                f"Error trying to connect with the server. {e}")
 
     def get_url(self, month: int, year: int) -> str:
         """
-        Devuelve el string de la URL correspondiente al mes/año proporcionados
+        Returns the URL string corresponding to the provided month/year.
 
-        Parámetros:
-        - year (str): Año en formato de cadena (se espera '21', '22' o '23').
-        - month (str): Mes en formato de cadena (entre '1' y '12').
+        Parameters:
+        - year (int): Year as an integer (expected values: 21, 22, or 23).
+        - month (int): Month as an integer (between 1 and 12).
 
-        Retorno:
-        - str: URL correspondiente al mes y año si existe.
+        Returns:
+        - str: The URL corresponding to the month and year if it exists.
 
-        Excepciones:
-        - ValueError: Si el año o mes no están en los rangos válidos o
-            no existe una URL para esa combinación.
+        Exceptions:
+        - ValueError: If the year or month are not within valid ranges or
+          if a URL for that combination does not exist.
+        - KeyError: If the year and month are within valid ranges but the URL 
+          doesn't exist.
         """
         try:
-            # Los datos del mes 10 del año 2021 está mal generado por la EMT,
-            # por lo que se pide que no se use ese fichero.
+            # Data for 10/21 was poorly generated by the EMT,
+            # so this file is avoided to check
             if month==10 and year==21:
-                raise ValueError("No hay datos para el par mes/año introducido")
-            # Comprobación de rango válido para año y mes
+                raise ValueError(
+                    "There is no data for the provided "+
+                    "month/year combination.")
+            # Check for valid range for year and month
             if year not in range(21, 24):
-                raise ValueError("El año debe estar entre 21 y 23.")
+                raise ValueError("Year must be between 21 and 23.")
 
             if month not in range(1, 13):
-                raise ValueError("El mes debe estar entre 1 y 12.")
+                raise ValueError("Month must be between 1 and 12.")
+            if (year == 23 and month in range(3,13) or
+            year == 21 and month in range(1,7)):
+                raise ValueError("There is no data from march 2023")
         except ValueError:
-            # Si la combinación de año y mes no tiene un enlace
-            # registrado, lanzar excepción
-            raise ValueError("No hay datos para el par mes, año introducido")
+            # If the year and month combination is not within the allowed 
+            # values, raise an exception.
+            raise ValueError(
+                "There is no data for the provided month/year combination."
+)
 
         try:
             return self.__enlaces[year, month]
         except KeyError:
-            # Si la combinación de año y mes no tiene un enlace
-            # registrado, lanzar excepción
-            raise KeyError("No hay datos para el par mes, año introducido")
+            # If the combination of year and month does not have a registered 
+            # link, raise an exception
+            raise KeyError("There is no data for the provided" +
+                           "month/year combination.")
 
 
     def get_csv(self, month: int, year: int) -> str:
         '''
-        método de instancia que acepta los argumentos de tipo entero
-        month y year y devuelve un fichero en formato CSV correspondiente
-        al mes month y año year.
+        Instance method that accepts integer arguments `month` and `year` and 
+        returns a CSV file corresponding to the given month and year.
+
+        Parameters:
+        - month (int): Month as an integer (between 1 and 12).
+        - year (int): Year as an integer (expected values: 21, 22, or 23).
+
+        Returns:
+        - io.StringIO: A StringIO object containing the CSV content.
+
+        Exceptions:
+        - ConnectionError: If there is an issue downloading the ZIP file.
+        - FileNotFoundError: If no CSV file is found in the ZIP or if the ZIP 
+        is not valid.
+        - ValueError: If the CSV file cannot be read (e.g., it is empty).
+        - Exception: For any other unexpected errors, with a generic message.
         '''
         url = UrlEMT.EMT + self.get_url(month, year)
         try:
             r = requests.get(url)
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
-            raise ConnectionError(f"Error al descargar el archivo ZIP: {e}")
+            raise ConnectionError(f"Error downloading zip file: {e}")
         try:
-            # Descomprimir el archivo ZIP en memoria
+            # Unzip ZIP file in memory
             with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-                # Listar los archivos en el ZIP
-                nombres_archivos = z.namelist()
-                if not nombres_archivos:
+                # List file names in ZIP
+                file_names = z.namelist()
+                if not file_names:
                     raise FileNotFoundError(
-                        "No se encontró ningún archivo csv en el ZIP")
-                csv_file = [file for file in nombres_archivos 
+                        "No CSV file was found in the ZIP.")
+                csv_file = [file for file in file_names 
                             if file.endswith('.csv')]
-                # Extraer el CSV
-                # (suponiendo que es el primer archivo en la lista)
                 with z.open(csv_file[0]) as csv_file:
-                    # Leer el contenido del CSV en un objeto TextIO.
-                    # Convierte a string y crea un TextIO
-                    contenido_csv = io.StringIO(
+                    # Reads the content of the CSV into a TextIO object.
+                    # Converts to string and creates a TextIO.
+                    csv_content = io.StringIO(
                         csv_file.read().decode('utf-8'))
-                    if contenido_csv.getvalue()=='':
-                        raise ValueError(
-                            "No se pudo leer el archivo CSV")
-            return contenido_csv
+                    if csv_content.getvalue()=='':
+                        raise ValueError("Could not read the CSV file")
+            return csv_content
         except zipfile.BadZipFile:
             raise FileNotFoundError(
-                'El archivo descargado no es un ZIP válido')
+                'Downloaded file is not a valid ZIP')
         except ValueError as e:
             raise ValueError(e)
         except FileNotFoundError as e:
             raise FileNotFoundError(e)
         except Exception as e:
-            raise Exception("Error desconocido. Parando ejecución")
+            raise Exception("Unknown error. Stropping execution")
 
 
     def __str__(self):

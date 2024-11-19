@@ -68,11 +68,11 @@ class BiciMad():
         except FileNotFoundError:
           raise FileNotFoundError(f"Error: El archivo {csv} no se encuentra.")
         except pd.errors.ParserError:
-          raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo CSV. Asegúrate de que"
-                    "esté bien formado.")
+          raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo"+ 
+            "CSV. Asegúrate de que esté bien formado.")
         except ValueError as e:
-          raise ValueError(f"Error: {e}. Asegúrate de que las columnas especificadas "
-                  "existan en el archivo CSV.")
+          raise ValueError(f"Error: {e}. Asegúrate de que las columnas "
+                  "especificadas existan en el archivo CSV.")
         except Exception as e:
           raise Exception(f"Se ha producido un error inesperado: {e}")
 
@@ -119,8 +119,8 @@ class BiciMad():
           'total_uses', 'total_time', 'most_popular_station',
           'uses_from_most_popular'
         - los valores son: el año, el mes, el total de usos en dicho mes, el
-           total de horas en dicho mes, el conjunto de estaciones de bloqueo con
-            mayor número de usos y el número de usos de dichas estaciones.
+           total de horas en dicho mes, el conjunto de estaciones de bloqueo 
+           con mayor número de usos y el número de usos de dichas estaciones.
       '''
       # Calcular el total de usos en el mes
       total_uses = len(self.data)
@@ -170,8 +170,8 @@ class BiciMad():
 
     @staticmethod
     def bar_diagram(serie: pd.Series) -> None:
-      '''C3: Create a chart with the data from a series that contains the number
-       of daily rentals for a month.'''
+      '''C3: Create a chart with the data from a series that 
+      contains the number of daily rentals for a month.'''
       ax = serie.plot(
           kind='bar',
           color='skyblue',
@@ -189,7 +189,8 @@ class BiciMad():
       '''C4: Calculates how many hours have all the bikes been rented
       divided per day of the week'''
       hoursOfRental = self.day_time().to_frame()
-      hoursOfRental.rename(columns={'trip_minutes': 'trip_hours'}, inplace=True)
+      hoursOfRental.rename(
+        columns={'trip_minutes': 'trip_hours'}, inplace=True)
       hoursOfRental['trip_hours'] = hoursOfRental['trip_hours']/60
       hoursOfRental['week_day'] = hoursOfRental.index.day_name()
       hoursOfRental = (
@@ -208,7 +209,8 @@ class BiciMad():
 
     def usage_per_day_per_station(self) -> pd.DataFrame:
       '''C6: Calculate the total number of uses per day and unlock station'''
-      return self.data.groupby([pd.Grouper(freq='1D'), 'station_unlock']).size()
+      return self.data.groupby(
+        [pd.Grouper(freq='1D'), 'station_unlock']).size()
 
 
     def most_popular_stations(self: "BiciMad") -> set:
@@ -221,7 +223,8 @@ class BiciMad():
     def usage_from_most_popular_station(self: "BiciMad") -> int:
       '''C8: Calculate station with the max number of uses per day'''
       set_of_most_popular_stations = self.most_popular_stations()
-      return self.data['address_unlock'].isin(set_of_most_popular_stations).sum()
+      return self.data['address_unlock'].isin(
+        set_of_most_popular_stations).sum()
 
 
     def __len__(self):
@@ -232,11 +235,12 @@ class BiciMad():
         header = f"Reporte de Datos para {self.__month}/{self.__year}"
         
         data_description = (
-            f"El DataFrame contiene {len(self)} registros con las siguientes columnas: "
+            f"El DataFrame contiene {len(self)} registros con estas columnas:"
             f"{', '.join(self.data.columns)}."
         )
         
-        # Información adicional, como los primeros y últimos registros para dar una vista previa
+        # Información adicional, como los primeros y 
+        # últimos registros para dar una vista previa
         preview = "Vista previa de los primeros y últimos registros:\n"
         preview += str(self.data.head(3)) + "\n...\n" + str(self.data.tail(3))
         

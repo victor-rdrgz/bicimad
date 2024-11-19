@@ -78,11 +78,13 @@ class TestBiciMad(unittest.TestCase):
                 self.assertIsInstance(result, pd.DataFrame)
                 
                 
-    @patch('bicimad.UrlEMT.get_csv', side_effect=Exception("Simulated connection error"))
+    @patch('bicimad.UrlEMT.get_csv',
+           side_effect=Exception("Simulated connection error"))
     def test_get_data_connection_error(self, mock_get_csv):
         with self.assertRaises(ConnectionError) as context:
             BiciMad.get_data(5, 23)
-        self.assertIn("Error al obtener datos desde la URL", str(context.exception))
+        self.assertIn(
+            "Error al obtener datos desde la URL", str(context.exception))
 
 
     @patch('bicimad.UrlEMT.get_csv')
@@ -97,7 +99,8 @@ class TestBiciMad(unittest.TestCase):
 
 
     @patch('bicimad.UrlEMT.get_csv')
-    @patch('pandas.read_csv', side_effect=pd.errors.ParserError("Parser error"))
+    @patch('pandas.read_csv', 
+           side_effect=pd.errors.ParserError("Parser error"))
     def test_get_data_parser_error(self, mock_read_csv, mock_get_csv):
         with self.assertRaises(pd.errors.ParserError) as context:
             BiciMad.get_data(5, 22)
@@ -111,9 +114,9 @@ class TestBiciMad(unittest.TestCase):
     def test_get_data_value_error(self, mock_read_csv, mock_get_csv):
         with self.assertRaises(ValueError) as context:
             BiciMad.get_data(5, 22)
-            self.assertTrue(any("Error: Column not found" in message for message in log.output))
             self.assertTrue(
-                any('Error: No se pudo analizar el archivo CSV. Asegúrate de que esté bien formado.' in elemento 
+                any('Error: No se pudo analizar el archivo CSV. '+
+                    'Asegúrate de que esté bien formado.' in elemento 
                     for elemento in str(context.exception)))
                             
 
@@ -124,7 +127,8 @@ class TestBiciMad(unittest.TestCase):
             BiciMad.get_data(5, 22)
             # Verificar el mensaje de la excepción
             self.assertTrue(
-                any('Asegúrate de que las columnas especificadas existan en el archivo CSV.' in elemento 
+                any('Asegúrate de que las columnas especificadas'+
+                    'existan en el archivo CSV.' in elemento 
                     for elemento in str(context.exception)))
                             
 
@@ -139,7 +143,8 @@ class TestBiciMad(unittest.TestCase):
 
 
     def test_get_data_connection_error(self):
-        with patch('bicimad.UrlEMT.get_csv', side_effect=ConnectionError("Failed to fetch data")):
+        with patch('bicimad.UrlEMT.get_csv',
+                   side_effect=ConnectionError("Failed to fetch data")):
             with self.assertRaises(ConnectionError):
                 BiciMad.get_data(self.month, self.year)
 
@@ -205,7 +210,10 @@ class TestBiciMad(unittest.TestCase):
 
     def test_day_time(self):
         data = {
-            'fecha': pd.to_datetime(['2023-05-01', '2023-05-01', '2023-05-02']),
+            'fecha': pd.to_datetime([
+                '2023-05-01', 
+                '2023-05-01', 
+                '2023-05-02']),
             'trip_minutes': [30, 45, 60]
         }
         df = pd.DataFrame(data)
@@ -216,7 +224,8 @@ class TestBiciMad(unittest.TestCase):
 
 
     def test_bar_diagram(self):
-        series = pd.Series([10, 15, 20], index=pd.date_range('20230101', periods=3))
+        series = pd.Series([10, 15, 20], 
+                           index=pd.date_range('20230101', periods=3))
         with patch('matplotlib.pyplot.show') as mock_show:
             self.bicimad.bar_diagram(series)
             mock_show.assert_called_once()
@@ -262,7 +271,10 @@ class TestBiciMad(unittest.TestCase):
 
     def test_usage_per_day_per_station(self):
         data = {
-            'fecha': pd.to_datetime(['2023-05-01', '2023-05-01', '2023-05-02']),
+            'fecha': pd.to_datetime([
+                '2023-05-01', 
+                '2023-05-01', 
+                '2023-05-02']),
             'station_unlock': ['Station1', 'Station1', 'Station2']
         }
         df = pd.DataFrame(data)
@@ -289,7 +301,8 @@ class TestBiciMad(unittest.TestCase):
         }
         df = pd.DataFrame(data)
         self.bicimad._BiciMad__data = df
-        with patch.object(BiciMad, 'most_popular_stations', return_value={'Address1'}):
+        with patch.object(BiciMad, 
+                          'most_popular_stations', return_value={'Address1'}):
             result = self.bicimad.usage_from_most_popular_station()
             self.assertEqual(result, 2)
             
