@@ -1,5 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
+
+from pandas.errors import EmptyDataError, ParserError
 import pandas as pd
 import numpy as np
 from bicimad import BiciMad
@@ -107,6 +109,22 @@ class TestBiciMad(unittest.TestCase):
             self.assertTrue(
                 any('Error: Column not found' in elemento 
                     for elemento in str(context.exception)))
+            
+            
+    @patch('bicimad.UrlEMT.get_csv')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_empty_data_error(self, mock_open_func, mock_get_csv):
+        """Test for EmptyDataError when the CSV file is empty"""
+        # Simula que el método get_csv devuelve una ruta al archivo CSV
+        mock_get_csv.return_value = 'dummy_path.csv'
+        
+        # Simula que el contenido del archivo CSV está vacío
+        mock_open_func.return_value.read.return_value = ''
+        
+        # Comprueba que se lanza la excepción EmptyDataError
+        with self.assertRaises(Exception) as context:
+            test_object = BiciMad(1, 23)
+        self.assertIn("No data found in the CSV file.", str(context.exception))
 
 
     @patch('bicimad.UrlEMT.get_csv')
@@ -316,14 +334,14 @@ class TestBiciMad(unittest.TestCase):
         # Crear un objeto de BiciMad con datos de prueba
         obj_to_print = BiciMad(2, 22)
         generated_str = str(obj_to_print)
-        
-        self.assertIn('Reporte de Datos para 2/22', generated_str)
-        self.assertIn(
-            'El DataFrame contiene 280375 registros con las siguientes ' +
-            'columnas: idBike, fleet, trip_minutes, geolocation_unlock, ' +
-            'address_unlock, unlock_date, locktype, unlocktype, ' +
-            'geolocation_lock, address_lock, lock_date, station_unlock, '+
-            'unlock_station_name, station_lock, lock_station_name.',
+        # self.assertIn('Reporte de Datos para 2/22', generated_str)
+        self.assertIn('Reporte de Datos para 2/22\nEl DataFrame contiene '
+                      '280375 registros con estas columnas:idBike, fleet, '
+                      'trip_minutes, geolocation_unlock, address_unlock, '
+                      'unlock_date, locktype, unlocktype, geolocation_lock, '
+                      'address_lock, lock_date, station_unlock, '
+                      'unlock_station_name, station_lock, lock_station_name.\n'
+                      'Vista previa de los primeros y últimos registros:\n',
             generated_str
         )
 

@@ -6,6 +6,30 @@ from bicimad.urlemt import UrlEMT
 
 
 class BiciMad():
+    COLUMNS_TYPE = {
+      'idBike': 'string',
+      'fleet': 'string',
+      'trip_minutes': 'float32',
+      'geolocation_unlock': 'string',
+      'address_unlock': 'string',
+      'locktype': 'string',
+      'unlocktype': 'string',
+      'geolocation_lock': 'string',
+      'address_lock': 'string',
+      'station_unlock': 'string',
+      'unlock_station_name': 'string',
+      'station_lock': 'string',
+      'lock_station_name': 'string'
+    }
+    
+    COLUMNS_TO_PRESERVE = [ 'fecha', 'idBike', 'fleet', 'trip_minutes',
+      'geolocation_unlock', 'address_unlock', 'unlock_date',
+      'locktype', 'unlocktype', 'geolocation_lock',
+      'address_lock', 'lock_date', 'station_unlock',
+      'unlock_station_name','station_lock',
+      'lock_station_name']
+
+  
     def __init__(self, month: int, year: int) -> None:
         '''
         Class Constructor. Gets renting data from a given month/year pair
@@ -41,13 +65,6 @@ class BiciMad():
         if year not in range(21, 24):
             raise ValueError("El mes debe estar entre 1 y 12.")
 
-        COLUMNS_TO_PRESERVE = [ 'fecha', 'idBike', 'fleet', 'trip_minutes',
-            'geolocation_unlock', 'address_unlock', 'unlock_date',
-            'locktype', 'unlocktype', 'geolocation_lock',
-            'address_lock', 'lock_date', 'station_unlock',
-            'unlock_station_name','station_lock',
-            'lock_station_name']
-
         url_manager = UrlEMT()
         try:
             # obtenemos el csv haciendo uso de la clase UrlEMT()
@@ -62,17 +79,24 @@ class BiciMad():
                 sep=';',
                 quotechar="'",
                 index_col='fecha',
+                dtype=BiciMad.COLUMNS_TYPE,
                 parse_dates = ['fecha', 'unlock_date', 'lock_date'],
-                usecols= COLUMNS_TO_PRESERVE)
+                usecols= BiciMad.COLUMNS_TO_PRESERVE)
             return df
         except FileNotFoundError:
           raise FileNotFoundError(f"Error: El archivo {csv} no se encuentra.")
+        except pd.errors.EmptyDataError:
+          raise Exception("No data found in the CSV file.")
         except pd.errors.ParserError:
           raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo"+ 
             "CSV. Asegúrate de que esté bien formado.")
         except ValueError as e:
           raise ValueError(f"Error: {e}. Asegúrate de que las columnas "
                   "especificadas existan en el archivo CSV.")
+        except KeyError as e:
+          raise Exception(f"Column not found in the CSV file: {e}")
+        except UnicodeDecodeError as e:
+          raise UnicodeDecodeError(f"Error accessing file{e}")
         except Exception as e:
           raise Exception(f"Se ha producido un error inesperado: {e}")
 
@@ -238,9 +262,6 @@ class BiciMad():
             f"El DataFrame contiene {len(self)} registros con estas columnas:"
             f"{', '.join(self.data.columns)}."
         )
-        
-        # Información adicional, como los primeros y 
-        # últimos registros para dar una vista previa
         preview = "Vista previa de los primeros y últimos registros:\n"
         preview += str(self.data.head(3)) + "\n...\n" + str(self.data.tail(3))
         

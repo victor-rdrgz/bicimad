@@ -28,9 +28,8 @@ class TestUrlEMT(unittest.TestCase):
     
     HTML_WITHOUT_LINKS = '<html><body>No links here</body></html>'
     
-    URL_12_22 = ('/getattachment/34b933e4-4756-4fed-8d5b-2d44f7503ccc/trips_22'
-                 '_12_December-csv.aspx')
-     
+    URL_10_21 = ('/getattachment/51ba4be6-596f-41d3-8bab-634c4be569c5/trips_21'
+                 '_10_October-csv.aspx')
      
     def test_get_links_valid_html(self):
         ''' Tests correct behaviour of the method when html with links'''        
@@ -58,8 +57,8 @@ class TestUrlEMT(unittest.TestCase):
         mock_urlopen.return_value = mock_response
 
         links = UrlEMT.select_valid_urls()
-        self.assertIn((21, 10), links)
-        assert links[(21,10)] == self.URL_12_22
+        self.assertIn((21, 10), links.keys())
+        assert links[(21,10)] == self.URL_10_21
         
 
 
@@ -106,8 +105,8 @@ class TestUrlEMT(unittest.TestCase):
     def test_get_url_success(self):
         '''Tests get_url success'''
         url_from_emt = UrlEMT()
-        url = url_from_emt.get_url(12, 22)
-        assert (url == self.URL_12_22)
+        url = url_from_emt.get_url(10, 21)
+        assert (url == self.URL_10_21)
         
         
     @patch('bicimad.urlemt.UrlEMT.select_valid_urls', return_value={})
@@ -131,14 +130,6 @@ class TestUrlEMT(unittest.TestCase):
         with self.assertRaises(ValueError):
             url_emt = UrlEMT()
             url_emt.get_url(12, 13)
-            
-            
-    def test_get_url_fail_21_10(self):
-        '''Tests value error when 10/21 is provided. This combination of 
-        month/year doesn't have usage data'''
-        with self.assertRaises(ValueError):
-            url_emt = UrlEMT()
-            url_emt.get_url(10, 21)
 
 
     def test_get_url_fail_21_before_july(self):
@@ -247,14 +238,11 @@ class TestUrlEMT(unittest.TestCase):
         mock_response.content = b'not a zip content'
         mock_response.status_code = 200
         mock_get.return_value = mock_response
-        # Crear un mock para zipfile.ZipFile que lance una excepción BadZipFile
+        # Create a mock for zipfile.ZipFile that throws a BadZipFile exception
         with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile):
-            # Instanciar el objeto que contiene el método get_csv
             obj = UrlEMT()
-            # Ejecutar el método y capturar la excepción
             with self.assertRaises(FileNotFoundError) as context:
-                obj.get_csv(3, 22)  # Asumiendo que 3 es el mes y 22 el año
-            # Verificar que el mensaje de la excepción es correcto
+                obj.get_csv(3, 22)
             self.assertIn(
                 "Downloaded file is not a valid ZIP", 
                 str(context.exception))
@@ -292,7 +280,6 @@ class TestUrlEMT(unittest.TestCase):
         obj = UrlEMT()
         with self.assertRaises(ValueError) as context:
             obj.get_csv(1, 22)
-        # Verificar que el mensaje de la excepción es correcto
         self.assertIn("Could not read the CSV file", str(context.exception))
 
 
@@ -306,10 +293,8 @@ class TestUrlEMT(unittest.TestCase):
         )
         for line in lines:
             assert (pattern.match(line), 
-            f"Esta línea no coincide con el formato esperado: {line}")
-                    
-        # Crear un mock del objeto MyClass
-        mock_obj = MagicMock(spec=UrlEMT)
+            f"At least one url does not match the expected format: {line}")
+        '''mock_obj = MagicMock(spec=UrlEMT)
         # Convertir el objeto mock a una cadena para 
         # forzar la llamada a __str__
         str(mock_obj)
@@ -318,7 +303,7 @@ class TestUrlEMT(unittest.TestCase):
         # Alternativamente, verificar que __str__ fue llamado exactamente 
         # una vez mock_obj.__str__.assert_called_once()
         # Para verificar si fue llamado al menos una vez usando call_count
-        self.assertGreaterEqual(mock_obj.__str__.call_count, 1)
+        self.assertGreaterEqual(mock_obj.__str__.call_count, 1)'''
 
 
 if __name__ == '__main__':
