@@ -7,6 +7,7 @@ import requests
 from unittest.mock import MagicMock, patch
 
 from bicimad.urlemt import UrlEMT, get_links
+from bicimad.bicimad import BiciMad
 
 class TestUrlEMT(unittest.TestCase):
 

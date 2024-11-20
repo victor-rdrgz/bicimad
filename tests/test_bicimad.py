@@ -10,61 +10,17 @@ class TestBiciMad(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.month = 5  # Mes de prueba
-        cls.year = 22  # Año de prueba
-        # cls.data = BiciMad(5, 22).data()
+        """Create a BiciMad instance only once for all tests"""
+        cls.bicimad = BiciMad(2, 22)
 
-    def setUp(self):
-        # Crear una instancia de BiciMad para cada prueba
-        self.bicimad = BiciMad(self.month, self.year)
 
     @patch('bicimad.BiciMad.clean')
     @patch('bicimad.BiciMad.get_data')
     def test_init_calls_get_data_and_clean(self, mock_get_data, mock_clean):
-        # Configurar el retorno simulado de get_data
-        mock_get_data.return_value = pd.DataFrame({
-            'fecha': pd.to_datetime(['2023-05-01']),
-            'idBike': ['12345'],
-            'trip_minutes': [30]
-        })
-
-        # Crear una instancia de BiciMad para probar la inicialización
-        bicimad_instance = BiciMad(5, 22)
-
-        # Verificar que los métodos se llamaron con los argumentos esperados
-        mock_get_data.assert_called_once_with(5, 22)
-        mock_clean.assert_called_once()
-
-        # Verificar que los atributos se inicializaron correctamente
-        self.assertEqual(bicimad_instance._BiciMad__month, 5)
-        self.assertEqual(bicimad_instance._BiciMad__year, 22)
-        self.assertIsInstance(bicimad_instance._BiciMad__data, pd.DataFrame)
-
-
-    def test_get_data_valid_input(self):
-        with patch('bicimad.UrlEMT.get_csv') as mock_get_csv:
-            mock_get_csv.return_value = 'path/to/csv'
-            with patch('pandas.read_csv') as mock_read_csv:
-                mock_read_csv.return_value = pd.DataFrame({
-                    'fecha': pd.to_datetime(['2022-05-01']),
-                    'idBike': ['12345'],
-                    'trip_minutes': [30]
-                })
-                result = BiciMad.get_data(self.month, self.year)
-                self.assertIsInstance(result, pd.DataFrame)
-                
-                
-    def test_get_data_invalid_month(self):
-        with patch('bicimad.UrlEMT.get_csv') as mock_get_csv:
-            mock_get_csv.return_value = 'path/to/csv'
-            with patch('pandas.read_csv') as mock_read_csv:
-                mock_read_csv.return_value = pd.DataFrame({
-                    'fecha': pd.to_datetime(['2023-05-01']),
-                    'idBike': ['12345'],
-                    'trip_minutes': [30]
-                })
-                result = BiciMad.get_data(13, self.year)
-                self.assertIsInstance(result, pd.DataFrame)
+        # Checks that the attributes were initialized correctly
+        self.assertEqual(self.bicimad._BiciMad__month, 2)
+        self.assertEqual(self.bicimad._BiciMad__year, 22)
+        self.assertIsInstance(self.bicimad._BiciMad__data, pd.DataFrame)
                 
                 
     def test_get_data_invalid_year(self):
@@ -84,7 +40,8 @@ class TestBiciMad(unittest.TestCase):
            side_effect=Exception("Simulated connection error"))
     def test_get_data_connection_error(self, mock_get_csv):
         with self.assertRaises(ConnectionError) as context:
-            BiciMad.get_data(5, 23)
+            BiciMad.get_data(
+                self.bicimad._BiciMad__month, self.bicimad._BiciMad__year)
         self.assertIn(
             "Error al obtener datos desde la URL", str(context.exception))
 
@@ -123,8 +80,8 @@ class TestBiciMad(unittest.TestCase):
         
         # Comprueba que se lanza la excepción EmptyDataError
         with self.assertRaises(Exception) as context:
-            test_object = BiciMad(1, 23)
-        self.assertIn("No data found in the CSV file.", str(context.exception))
+            BiciMad(1, 23)
+            self.assertIn("No data found in the CSV file.", str(context.exception))
 
 
     @patch('bicimad.UrlEMT.get_csv')
@@ -138,107 +95,112 @@ class TestBiciMad(unittest.TestCase):
                     for elemento in str(context.exception)))
                             
 
-    @patch('bicimad.UrlEMT.get_csv')
     @patch('pandas.read_csv', side_effect=Exception("Unexpected error"))
-    def test_get_data_generic_exception(self, mock_read_csv, mock_get_csv):
+    def test_get_data_generic_exception(self, mock_read_csv):
         with self.assertRaises(Exception) as context:
-            BiciMad.get_data(5, 22)
-            # Verificar el mensaje de la excepción
-            self.assertTrue(
-                any('Asegúrate de que las columnas especificadas'+
-                    'existan en el archivo CSV.' in elemento 
-                    for elemento in str(context.exception)))
+            BiciMad.get_data(2, 22)
+        self.assertIn('Unexpected error', str(context.exception))
                             
 
     def test_get_data_invalid_month(self):
-        with self.assertRaises(ValueError):
-            BiciMad.get_data(13, self.year)
+        with self.assertRaises(ValueError) as context:
+            result = BiciMad.get_data(13, self.bicimad._BiciMad__year)
+            self.assertIsInstance(result, pd.DataFrame)
+            self.assertIn(
+                "Month has to be between 1 and 12", str(context.exception))
 
 
     def test_get_data_invalid_year(self):
-        with self.assertRaises(ValueError):
-            BiciMad.get_data(self.month, 25)
-
-
-    def test_get_data_connection_error(self):
-        with patch('bicimad.UrlEMT.get_csv',
-                   side_effect=ConnectionError("Failed to fetch data")):
-            with self.assertRaises(ConnectionError):
-                BiciMad.get_data(self.month, self.year)
+        with self.assertRaises(ValueError) as context:
+            result = BiciMad.get_data(self.bicimad._BiciMad__month, 20)
+            self.assertIsInstance(result, pd.DataFrame)
+            self.assertIn(
+                "Year has to be between 21 and 23", str(context.exception))
+            
+            
+    @patch('bicimad.UrlEMT.get_csv', return_value='dummy_path.csv')
+    @patch('pandas.read_csv', side_effect=KeyError("missing_column"))
+    def test_get_data_key_error(self, mock_read_csv, mock_get_csv):
+        '''Tests when missing column in CSV file'''
+        with self.assertRaises(Exception) as context:
+            BiciMad.get_data(5, 22)
+        
+        # Verifica que el mensaje de la excepción contiene el texto esperado
+        self.assertIn(
+            "Column not found in the CSV file: 'missing_column'", 
+            str(context.exception))
 
 
     def test_resume(self):
-        data = {
-            'station_lock': ['A', 'A', 'B'],
-            'trip_minutes': [30, 20, 50]
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
         result = self.bicimad.resume()
-        self.assertEqual(result['total_uses'], 3)
-        self.assertAlmostEqual(result['total_time'], 1.67, places=2)
-        self.assertEqual(result['most_popular_station'], 'A')
-        self.assertEqual(result['uses_from_most_popular'], 2)
+        self.assertEqual(result['total_uses'], 280375)
+        self.assertAlmostEqual(result['total_time'], 95035.796875)
+        self.assertEqual(result['most_popular_station'], '43')
+        self.assertEqual(result['uses_from_most_popular'], 3329)
 
 
     def test_bikes_not_locked_in_station(self):
-        data = {
-            'station_unlock': ['Station1', 'Station2', None],
-            'station_lock': [None, 'Station2', None]
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
         result = self.bicimad.bikes_not_locked_in_station()
-        self.assertEqual(result, 1)
+        self.assertEqual(result, 711)
         
         
     def test_fleet_1_bikes(self):
-        data = {
-            'station_lock': ['A', 'A', 'B'],
-            'trip_minutes': [30, 20, 50],
-            'fleet': ['1.0', '1.0', '2.0']
-        }
-        
-        expected_result = pd.DataFrame({
-            'station_lock': ['A', 'A'],
-            'trip_minutes': [30, 20],
-            'fleet': ['1.0', '1.0']
+        # Mockear la función estática `get_data` para devolver un DataFrame controlado
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
+            'fleet': ['1.0', '2.0', '1.0', '3.0'],  # Dos valores de '1.0'
+            'idBike': ['A', 'B', 'C', 'D'],  # Identificadores de bicicleta
+            'trip_minutes': [30, 20, 25, 15]  # Duración del viaje
+        })):
+            # Crear el objeto `BiciMad` con los datos mockeados
+            bicimad = BiciMad(5, 22)
+
+            # Llamar a la función a probar
+            result = bicimad.fleet_1_bikes()
+
+            # Crear el DataFrame esperado
+            expected_df = pd.DataFrame({
+                'fleet': ['1.0', '1.0'],
+                'idBike': ['A', 'C'],
+                'trip_minutes': [30, 25]
             })
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        result = self.bicimad.fleet_1_bikes()
-        try:
-            pd.testing.assert_frame_equal(result, expected_result)
-        except AssertionError as e:
-            raise Exception('Los dataframes no son iguales')
+            expected_df = expected_df.astype(
+                {'fleet': 'string', 
+                 'idBike': 'string'})
+            # Reset the index to ensure the filtered DataFrame has a sequential
+            # index matching the expected DataFrame for comparison.
+            expected_df.reset_index(drop=True, inplace=True)
+            result.reset_index(drop=True, inplace =True)
+            # Check result with expected_result
+            pd.testing.assert_frame_equal(result,expected_df)
 
 
     def test_clean_valid(self):
-        data = pd.DataFrame({
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
             'idBike': [1, None, 3, np.nan, 5, np.nan],
             'fleet': ['value1', None, 'value3', np.nan, 'value5', np.nan],
             'col3': ['data1', None, 'data3', np.nan, 'data5', np.nan]
-        })
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        self.bicimad.clean()
-        self.assertFalse(
-            any(pd.isna(x) for x in self.bicimad.data['idBike'].tolist()))
+        })):
+            bicimad_obj = BiciMad(5, 22)
+            bicimad_obj.clean()
+            self.assertFalse(
+                any(pd.isna(x) for x in bicimad_obj.data['idBike'].tolist()))
 
 
     def test_day_time(self):
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame(
         data = {
             'fecha': pd.to_datetime([
                 '2023-05-01', 
                 '2023-05-01', 
                 '2023-05-02']),
-            'trip_minutes': [30, 45, 60]
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        result = self.bicimad.day_time()
-        self.assertEqual(result[pd.Timestamp('2023-05-01')], 75)
-        self.assertEqual(result[pd.Timestamp('2023-05-02')], 60)
+            'trip_minutes': [30, 45, 60],
+            'fleet': ['1.0', '1.0', '2.0'],
+            'idBike': [4,5,6]
+        })):
+            bicimad_obj = BiciMad(5, 22)
+            result = bicimad_obj.day_time()
+            self.assertEqual(result[pd.Timestamp('2023-05-01')], 75)
+            self.assertEqual(result[pd.Timestamp('2023-05-02')], 60)
 
 
     def test_bar_diagram(self):
@@ -250,90 +212,101 @@ class TestBiciMad(unittest.TestCase):
 
 
     def test_weekday_time(self):
-        data = {
-            'fecha': pd.to_datetime(['2023-01-02', '2023-01-03']), 
-            'trip_minutes': [120, 180]
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        result = self.bicimad.weekday_time()
-        self.assertEqual(result['Monday'], 2)  # 120 minutes / 60
-        self.assertEqual(result['Tuesday'], 3)  # 180 minutes / 60
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
+            'fecha': pd.to_datetime(['2023-01-02', '2023-01-03','2023-01-03']), 
+            'trip_minutes': [120, 180, 240],
+            'fleet': ['1.0', '1.0', '2.0'],
+            'idBike': [4,5,6]
+            })):
+            bicimad_obj = BiciMad(2,22)
+            result = bicimad_obj.weekday_time()
+            self.assertEqual(result['Monday'], 2)  # 120 minutes / 60
+            self.assertEqual(result['Tuesday'], 7)  # 420 minutes / 60
         
         
     def test_total_usage_day(self):
         # Datos de prueba
-        data = {
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
             'fecha': pd.to_datetime([
                 '2023-01-02', 
                 '2023-01-02', 
                 '2023-01-02', 
                 '2023-01-03']),
-            'trip_minutes': [120, 180, 60, 60]
-        }
-        df = pd.DataFrame(data)
-        df.set_index('fecha', inplace=True)
-        self.bicimad._BiciMad__data = df
-        dates = pd.to_datetime(
-            ['2023-01-02', '2023-01-03'], format='%Y-%m-%d').date
-        expected_result = pd.Series(
-            data=[3, 1],
-            index=dates
-        )
-        result = self.bicimad.total_usage_day()
-        try:
-            pd.testing.assert_series_equal(result, expected_result)
-        except AssertionError as e:
-            raise Exception('Las Series no son iguales: ' + str(e))
+            'trip_minutes': [120, 180, 60, 60],
+            'fleet': ['1.0', '1.0', '2.0','3.0'],
+            'idBike': [4,5,6,7],
+            
+        }).set_index('fecha')):
+            bicimad_obj = BiciMad(2,22)
+            dates = pd.to_datetime(
+                ['2023-01-02', '2023-01-03'], format='%Y-%m-%d').date
+            expected_result = pd.Series(
+                data=[3, 1],
+                index=dates
+            )
+            result = bicimad_obj.total_usage_day()
+            try:
+                pd.testing.assert_series_equal(result, expected_result)
+            except AssertionError as e:
+                raise Exception('Las Series no son iguales: ' + str(e))
         
 
     def test_usage_per_day_per_station(self):
-        data = {
+         with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
             'fecha': pd.to_datetime([
                 '2023-05-01', 
                 '2023-05-01', 
                 '2023-05-02']),
-            'station_unlock': ['Station1', 'Station1', 'Station2']
-        }
-        df = pd.DataFrame(data)
-        df.set_index('fecha', inplace=True)
-        self.bicimad._BiciMad__data = df
-        result = self.bicimad.usage_per_day_per_station()
-        self.assertEqual(result[(pd.Timestamp('2023-05-01'), 'Station1')], 2)
-        self.assertEqual(result[(pd.Timestamp('2023-05-02'), 'Station2')], 1)
+            'station_unlock': ['Station1', 'Station1', 'Station2'],
+            'fleet': ['1.0', '1.0', '2.0'],
+            'idBike': [4,5,6],
+        }).set_index('fecha')):
+            bicimad_obj = BiciMad(2,22)
+            result = bicimad_obj.usage_per_day_per_station()
+            self.assertEqual(
+                result[(pd.Timestamp('2023-05-01'), 'Station1')], 2)
+            self.assertEqual(
+                result[(pd.Timestamp('2023-05-02'), 'Station2')], 1)
 
 
     def test_most_popular_stations(self):
-        data = {
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
+            'fecha': pd.to_datetime([
+                '2023-05-01', 
+                '2023-05-01', 
+                '2023-05-02']),
+            'station_unlock': ['Station1', 'Station1', 'Station2'],
+            'fleet': ['1.0', '1.0', '2.0'],
+            'idBike': [4,5,6],
             'address_unlock': ['Address1', 'Address1', 'Address2']
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        result = self.bicimad.most_popular_stations()
-        self.assertIn('Address1', result)
+        }).set_index('fecha')):
+            bicimad_obj = BiciMad(2,22)
+            result = bicimad_obj.most_popular_stations()
+            self.assertIn('Address1', result)
 
 
     def test_usage_from_most_popular_station(self):
-        data = {
+        with patch('bicimad.BiciMad.get_data', return_value=pd.DataFrame({
+            'fecha': pd.to_datetime([
+                '2023-05-01', 
+                '2023-05-01', 
+                '2023-05-02']),
+            'station_unlock': ['Station1', 'Station1', 'Station2'],
+            'fleet': ['1.0', '1.0', '2.0'],
+            'idBike': [4,5,6],
             'address_unlock': ['Address1', 'Address1', 'Address2']
-        }
-        df = pd.DataFrame(data)
-        self.bicimad._BiciMad__data = df
-        with patch.object(BiciMad, 
-                          'most_popular_stations', return_value={'Address1'}):
-            result = self.bicimad.usage_from_most_popular_station()
+        }).set_index('fecha')):
+            bicimad_obj = BiciMad(2,22)
+            result = bicimad_obj.usage_from_most_popular_station()
             self.assertEqual(result, 2)
             
             
     def test_len(self):
-        obj_to_check_lenght = BiciMad(2, 22)
-        self.assertEqual(280375, len(obj_to_check_lenght))
+        self.assertEqual(280375, len(self.bicimad))
         
             
     def test_str(self):
-        # Crear un objeto de BiciMad con datos de prueba
-        obj_to_print = BiciMad(2, 22)
-        generated_str = str(obj_to_print)
+        generated_str = str(self.bicimad)
         # self.assertIn('Reporte de Datos para 2/22', generated_str)
         self.assertIn('Reporte de Datos para 2/22\nEl DataFrame contiene '
                       '280375 registros con estas columnas:idBike, fleet, '

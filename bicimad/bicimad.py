@@ -6,6 +6,7 @@ from bicimad.urlemt import UrlEMT
 
 
 class BiciMad():
+    # Columns and DataTypes to make conversion
     COLUMNS_TYPE = {
       'idBike': 'string',
       'fleet': 'string',
@@ -22,6 +23,7 @@ class BiciMad():
       'lock_station_name': 'string'
     }
     
+    # Columns we are interested in from the total of csv file
     COLUMNS_TO_PRESERVE = [ 'fecha', 'idBike', 'fleet', 'trip_minutes',
       'geolocation_unlock', 'address_unlock', 'unlock_date',
       'locktype', 'unlocktype', 'geolocation_lock',
@@ -32,9 +34,29 @@ class BiciMad():
   
     def __init__(self, month: int, year: int) -> None:
         '''
-        Class Constructor. Gets renting data from a given month/year pair
-        Cleans data according to specification
+        Initializes an instance of the BiciMad class by loading and cleaning
+        bicycle renting data for a specified month and year. This constructor 
+        sets the instance variables for month, year, and data used throughout 
+        the instance's lifecycle.
+
+        Parameters:
+        - month (int): The month for data retrieval, integer (1-12).
+        - year (int): The year for data retrieval. Valid values are typically
+          recent years such as 21, 22, or 23, representing 2021, 2022, and 2023
+
+        This method automatically fetches the renting data by invoking the 
+        static method `get_data` and cleans it using the `clean` method. This
+        ensures that the data is ready for use as soon as an instance is 
+        created.
+
+        Raises:
+        - ValueError: If the `month` or `year` are out of expected range.
+        - ConnectionError: If there is an issue with downloading the data.
+        - FileNotFoundError: If no data file is found for the given 
+            month and year.
+        - Exception: For any uncaught errors during data processing.
         '''
+
         self.__month = month
         self.__year = year
         self.__data = BiciMad.get_data(month, year)
@@ -42,109 +64,154 @@ class BiciMad():
 
     @staticmethod
     def get_data(month: int, year: int):
+      '''
+      Retrieves and returns a DataFrame containing bicycle usage data 
+      for a specified month and year from an external source.
+
+      This method fetches the data from a CSV file located via an URL that is
+      derived from the month and year parameters. It performs validation 
+      checks on the month and year, processes the CSV to a DataFrame applying 
+      specified filters and data types, and ensures that the data frame is 
+      properly formatted with the correct columns.
+
+      Parameters:
+      - month (int): The month for which data is required, valid values are
+          from 1 to 12.
+      - year (int): The year for which data is required, expected to be a 
+          two-digit integer like 21, 22, or 23, corresponding to the years 
+          2021 to 2023.
+
+      Returns:
+      - pd.DataFrame: A DataFrame populated with the data from the CSV file,
+        structured according to the predefined columns and data types.
+
+      Raises:
+      - ValueError: If `month` is not within 1-12 or `year` is not within the 
+            valid range.
+      - ConnectionError: If there is a failure in retrieving the CSV file 
+            from the URL.
+      - FileNotFoundError: If the CSV file does not exist 
+            in the downloaded ZIP.
+      - pd.errors.EmptyDataError: If the CSV file is 
+            found but contains no data.
+      - pd.errors.ParserError: If there are issues parsing the CSV file.
+      - KeyError: If an expected column is missing from the CSV file.
+      - Exception: For any other unhandled errors that occur during processing.
         '''
-        Método estático que acepta los argumentos de tipo entero
-        month y year y devuelve un objeto de tipo DataFrame
-        con los datos de uso correspondientes al mes y año indicados.
+      # Comprobación de rango válido para año y mes
+      if month not in range(1, 13):
+          raise ValueError("Month has to be between 1 and 12")
+      if year not in range(21, 24):
+          raise ValueError("Year has to be between 21 and 23")
 
-        Parámetros:
-        - month (int): Mes como número entero (1-12).
-        - year (int): Año como número entero (por ejemplo, 2023).
-
-        Retorno:
-        - pd.DataFrame: DataFrame que contiene los datos filtrados.
-
-        Excepciones:
-        - ValueError: Si el mes o año no son válidos.
-        - KeyError: Si alguna de las columnas especificadas no existe en el
-                    DataFrame.
-        '''
-        # Comprobación de rango válido para año y mes
-        if month not in range(1, 13):
-            raise ValueError("El año debe estar entre 21 y 23.")
-        if year not in range(21, 24):
-            raise ValueError("El mes debe estar entre 1 y 12.")
-
-        url_manager = UrlEMT()
-        try:
-            # obtenemos el csv haciendo uso de la clase UrlEMT()
-            csv = url_manager.get_csv(month, year)
-        except Exception as e:
-            raise ConnectionError(f"Error al obtener datos desde la URL: {e}")
-
-        try:
-            # Convierte el csv en un DataFrame
-            df = pd.read_csv(
-                csv ,
-                sep=';',
-                quotechar="'",
-                index_col='fecha',
-                dtype=BiciMad.COLUMNS_TYPE,
-                parse_dates = ['fecha', 'unlock_date', 'lock_date'],
-                usecols= BiciMad.COLUMNS_TO_PRESERVE)
-            return df
-        except FileNotFoundError:
-          raise FileNotFoundError(f"Error: El archivo {csv} no se encuentra.")
-        except pd.errors.EmptyDataError:
-          raise Exception("No data found in the CSV file.")
-        except pd.errors.ParserError:
-          raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo"+ 
-            "CSV. Asegúrate de que esté bien formado.")
-        except ValueError as e:
-          raise ValueError(f"Error: {e}. Asegúrate de que las columnas "
-                  "especificadas existan en el archivo CSV.")
-        except KeyError as e:
-          raise Exception(f"Column not found in the CSV file: {e}")
-        except UnicodeDecodeError as e:
-          raise UnicodeDecodeError(f"Error accessing file{e}")
-        except Exception as e:
-          raise Exception(f"Se ha producido un error inesperado: {e}")
+      url_manager = UrlEMT()
+      try:
+          # obtenemos el csv haciendo uso de la clase UrlEMT()
+          csv = url_manager.get_csv(month, year)
+      except Exception as e:
+          raise ConnectionError(f"Error al obtener datos desde la URL: {e}")
+      try:
+          # Convierte el csv en un DataFrame
+          df = pd.read_csv(
+              csv ,
+              sep=';',
+              quotechar="'",
+              index_col='fecha',
+              dtype=BiciMad.COLUMNS_TYPE,
+              parse_dates = ['fecha', 'unlock_date', 'lock_date'],
+              usecols= BiciMad.COLUMNS_TO_PRESERVE)
+          return df
+      except FileNotFoundError:
+        raise FileNotFoundError(f"Error: El archivo {csv} no se encuentra.")
+      except pd.errors.EmptyDataError:
+        raise Exception("No data found in the CSV file.")
+      except pd.errors.ParserError:
+        raise pd.errors.ParserError(f"Error: No se pudo analizar el archivo"+ 
+          "CSV. Asegúrate de que esté bien formado.")
+      except ValueError as e:
+        raise ValueError(f"Error: {e}. Asegúrate de que las columnas "
+                "especificadas existan en el archivo CSV.")
+      except KeyError as e:
+        raise Exception(f"Column not found in the CSV file: {e}")
+      except Exception as e:
+        raise Exception(f"Unexpected error {e}")
 
     @property
     def data(self):
         '''
-        Método decorado con el decorador @property para acceder
-        al atributo que representa los datos de uso. El atributo
-        ha de llamarse igual.
+        Provides access to the private attribute __data which contains the 
+        bicycle usage data loaded and cleaned by this instance.
 
-        Retorno:
-        - Los datos almacenados en el atributo privado __data.
+        This property allows read-only access to the bicycle usage data,
+        ensuring that the data cannot be modified directly, thus maintaining
+        the integrity of the data throughout the lifecycle of the instance.
+
+        Returns:
+        - pd.DataFrame: A DataFrame containing the cleaned and structured
+          bicycle usage data. This data includes various details about each
+          bicycle rent transaction such as start and end times, locations,
+          and other relevant metrics.
+
+        Usage:
+        To access the bicycle usage data of an instance of BiciMad:
+        >>> bicimad_instance = BiciMad(5, 22)
+        >>> data = bicimad_instance.data
+        The variable `data` will now hold the DataFrame with the data for 
+          May 2022.
         '''
         return self.__data
 
 
     def clean(self):
-        '''
-        Método de instancia que se encarga de realizar la limpieza
-        y transformación del dataframe que representa los datos.
-        Modifica el dataframe y no devuelve nada. Realiza las
-        siguientes tareas:
-        '''
-        # Reemplazar None y NaN por np.nan
-        self.__data.replace([None, 'nan'], np.nan, inplace=True)
-        # Eliminar filas donde todos los elementos son NaN
-        self.__data.dropna(how='all', inplace=True)
-        # Convertir columnas a tipo string según enunciado y EXTRA
-        # convertir el resto de columnas a tipos de datos más adecuados.
+      '''
+      Cleans and transforms the data within the DataFrame stored in this 
+      instance. This method standardizes the format and prepares the data for 
+      analysis by performing several key operations:
 
-        ################### Se ahorra un 64% de memoria ###################
-        data_types={
-          'idBike': 'string',
-          'fleet': 'string',
-        }
-        self.__data = self.__data.astype(data_types)
+      1. Replaces all instances of `None` and the string 'nan' with `np.nan`
+        to standardize missing values.
+      2. Removes any rows where all elements are NaN, which helps to clean up
+        the dataset by eliminating completely empty records.
+
+      The cleaning process is crucial for ensuring that the data is in a 
+      suitable format for analysis, free from inconsistencies, and optimized 
+      for performance.
+
+      This method modifies the `__data` attribute in place and does not return
+      a value.
+      '''
+      # Reemplazar None y NaN por np.nan
+      self.__data.replace([None, 'nan'], np.nan, inplace=True)
+      # Eliminar filas donde todos los elementos son NaN
+      self.__data.dropna(how='all', inplace=True)
 
 
     def resume(self):
       '''
-      Método de instancia que devuelve un objeto de tipo Series con las
-      siguientes restricciones:
-        - el índice está formado con las etiquetas: 'year', 'month',
-          'total_uses', 'total_time', 'most_popular_station',
-          'uses_from_most_popular'
-        - los valores son: el año, el mes, el total de usos en dicho mes, el
-           total de horas en dicho mes, el conjunto de estaciones de bloqueo 
-           con mayor número de usos y el número de usos de dichas estaciones.
+      Generates a summary of bicycle usage statistics for the given month and 
+      year. This method aggregates key statistics from the cleaned data set and 
+      provides an overview of the bicycle usage metrics.
+
+      Returns:
+      - pd.Series: A Series object with the following indices and corresponding 
+      values:
+          - 'year': The year of the data, indicating the temporal context 
+              of the summary.
+          - 'month': The month of the data, specifying when the data 
+              was collected.
+          - 'total_uses': The total number of bicycle uses recorded 
+              in the month.
+          - 'total_time': The total time for which bicycles were used 
+              during the month, calculated in hours.
+          - 'most_popular_station': The bicycle station with the 
+              highest number of uses, indicating a hotspot of bicycle activity.
+          - 'uses_from_most_popular': The number of times bicycles were used 
+              from the most popular station, providing insight into station
+              traffic.
+
+      The method calculates the total number of uses and total usage time from 
+      the 'trip_minutes' column, identifies the most frequently used station, 
+      and counts how many times bicycles were used from that station.
       '''
       # Calcular el total de usos en el mes
       total_uses = len(self.data)
@@ -252,18 +319,44 @@ class BiciMad():
 
 
     def __len__(self):
+      '''
+      Returns the number of entries in the DataFrame stored in this instance.
+
+      This method overrides the built-in Python `__len__()` method to provide a 
+      custom implementation that directly corresponds to the number of records 
+      in the DataFrame managed by this instance. It allows the use of Python's 
+      built-in `len()` functionto get the count of bicycle usage records loaded
+      and cleaned by this instance.
+
+      Returns:
+      int: The total number of records in the DataFrame.
+      '''
       return len(self.data)
 
 
     def __str__(self):
-        header = f"Reporte de Datos para {self.__month}/{self.__year}"
-        
-        data_description = (
-            f"El DataFrame contiene {len(self)} registros con estas columnas:"
-            f"{', '.join(self.data.columns)}."
-        )
-        preview = "Vista previa de los primeros y últimos registros:\n"
-        preview += str(self.data.head(3)) + "\n...\n" + str(self.data.tail(3))
-        
-        # Juntamos todo en un solo string para el output
-        return f"{header}\n{data_description}\n{preview}"
+      '''
+       Provides a string representation of this BiciMad instance, showcasing
+      the data context and a preview of the dataset.
+
+      This method overrides the built-in Python `__str__()` method to provide  
+      a custom string representation of the BiciMad instance. It includes a 
+      headerwith the month and year of the data, a description of the DataFrame 
+      including its size and the columns it contains, and a preview showing the 
+      first and last three records.
+
+      Returns:
+      str: A formatted string that combines a header, data description, and a 
+          preview of the DataFrame's contents.
+      '''
+      header = f"Reporte de Datos para {self.__month}/{self.__year}"
+      
+      data_description = (
+          f"El DataFrame contiene {len(self)} registros con estas columnas:"
+          f"{', '.join(self.data.columns)}."
+      )
+      preview = "Vista previa de los primeros y últimos registros:\n"
+      preview += str(self.data.head(3)) + "\n...\n" + str(self.data.tail(3))
+      
+      # Juntamos todo en un solo string para el output
+      return f"{header}\n{data_description}\n{preview}"
