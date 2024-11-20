@@ -36,7 +36,7 @@ class UrlEMT():
     
     
     def __init__(self):
-      '''Buidls the object with the links from Bicimad URL'''
+      '''Builds the object with the links from Bicimad URL'''
       self.__enlaces = UrlEMT.select_valid_urls()
 
 
@@ -96,7 +96,7 @@ class UrlEMT():
           doesn't exist.
         """
         try:
-             # Check for valid range for year and month
+            # Check for valid range for year and month
             if year not in range(21, 24):
                 raise ValueError("Year must be between 21 and 23.")
 
@@ -110,8 +110,7 @@ class UrlEMT():
             # values, raise an exception.
             raise ValueError(
                 "There is no data for the provided month/year combination."
-)
-
+            )
         try:
             return self.__enlaces[year, month]
         except KeyError:

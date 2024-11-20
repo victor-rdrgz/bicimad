@@ -190,7 +190,7 @@ class TestUrlEMT(unittest.TestCase):
         instance = UrlEMT()
         result = instance.get_csv(month, year)
         
-        # Asegurarse de que las funciones se llamaron correctamente
+        # Ensure that the functions were called correctly
         mock_requests_get.assert_called_once_with(
             UrlEMT.EMT + '/test/url/for/october')
         mock_string_io.assert_called()
