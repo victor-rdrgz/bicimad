@@ -6,8 +6,7 @@ import zipfile
 import requests
 from unittest.mock import MagicMock, patch
 
-from bicimad.urlemt import UrlEMT, get_links
-from bicimad.bicimad import BiciMad
+from src.urlemt import UrlEMT, get_links
 
 class TestUrlEMT(unittest.TestCase):
 
@@ -110,7 +109,7 @@ class TestUrlEMT(unittest.TestCase):
         assert (url == self.URL_10_21)
         
         
-    @patch('bicimad.urlemt.UrlEMT.select_valid_urls', return_value={})
+    @patch('src.urlemt.UrlEMT.select_valid_urls', return_value={})
     def test_get_url_test_keyerror(self, mock_select_valid_urls):
         '''Tests when previous check are passed but still no link stored for
             month/year combination'''
@@ -147,7 +146,7 @@ class TestUrlEMT(unittest.TestCase):
             url_emt.get_url(3, 23)
             
             
-    @patch('bicimad.urlemt.UrlEMT.get_url')
+    @patch('src.urlemt.UrlEMT.get_url')
     @patch('requests.get')
     @patch('zipfile.ZipFile')
     @patch('io.StringIO')
@@ -196,7 +195,7 @@ class TestUrlEMT(unittest.TestCase):
         mock_string_io.assert_called()
 
 
-    @patch('bicimad.urlemt.UrlEMT.get_url', return_value='https://fakeurl.com')
+    @patch('src.urlemt.UrlEMT.get_url', return_value='https://fakeurl.com')
     @patch('requests.get')
     def test_get_csv_fail(self, mock_get, mock_get_url):
         '''Tests when provided url is not of a csv file'''
@@ -208,7 +207,7 @@ class TestUrlEMT(unittest.TestCase):
             self.assertIn("Error downloading zip file:", str(context.exception))
             
             
-    @patch('bicimad.urlemt.UrlEMT.get_url', return_value='/test/url')
+    @patch('src.urlemt.UrlEMT.get_url', return_value='/test/url')
     @patch('requests.get')
     def test_get_csv_empty_zip(self, mock_get, mock_get_url):
         '''Tests get_csv when zip file downloaded is empty'''
@@ -230,7 +229,7 @@ class TestUrlEMT(unittest.TestCase):
                 str(context.exception))
             
             
-    @patch('bicimad.urlemt.UrlEMT.get_url', return_value='/test/url')
+    @patch('src.urlemt.UrlEMT.get_url', return_value='/test/url')
     @patch('requests.get')
     def test_get_csv_invalid_zip_file(self, mock_get, mock_get_url):
         '''Tests when zip file is not correct'''
@@ -249,7 +248,7 @@ class TestUrlEMT(unittest.TestCase):
                 str(context.exception))
             
             
-    @patch('bicimad.urlemt.UrlEMT.get_url')
+    @patch('src.urlemt.UrlEMT.get_url')
     @patch('requests.get')
     @patch('zipfile.ZipFile')
     @patch('io.StringIO')
